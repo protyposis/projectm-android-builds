@@ -1,0 +1,30 @@
+diff --git a/.github/workflows/build_android.yml b/.github/workflows/build_android.yml
+index cf82873..74976d2 100644
+--- a/.github/workflows/build_android.yml
++++ b/.github/workflows/build_android.yml
+@@ -1,15 +1,7 @@
+ name: Android
+ 
+ on:
+-  push:
+-      branches:
+-        - "*"
+-      tags:
+-        - "*"
+-
+-  pull_request:
+-      branches:
+-        - "*"
++  workflow_dispatch:
+ 
+ jobs:
+   build-shared:
+@@ -18,7 +10,7 @@ jobs:
+     strategy:
+       fail-fast: false
+       matrix:
+-        libs: ['shared', 'static']
++        libs: ['shared']
+         abi: ['arm64-v8a', 'armeabi-v7a', 'x86_64']
+         platform-version: ['33']
+         runs-on: ['ubuntu-24.04']

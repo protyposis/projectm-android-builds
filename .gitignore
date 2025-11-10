@@ -1,0 +1,46 @@
+# Gradle files
+.gradle/
+build/
+local.properties
+
+# Android Studio / IntelliJ
+*.iml
+.idea/
+*.iws
+*.ipr
+out/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Native build files
+.externalNativeBuild
+.cxx/
+
+# Gradle wrapper (optional, you may want to commit these)
+gradle/wrapper/gradle-wrapper.jar
+
+# Signing files
+*.jks
+*.keystore
+signing.properties
+
+# Generated AAR files (except in releases)
+*.aar
+!releases/*.aar
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Log files
+*.log
+
+# projectM build outputs
+projectm/build/
+projectm/cmake-build*/
+
+local-maven-build-repo/

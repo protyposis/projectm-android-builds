@@ -1,0 +1,53 @@
+diff --git a/.github/workflows/build_android.yml b/.github/workflows/build_android.yml
+index 9092d08..06768db 100644
+--- a/.github/workflows/build_android.yml
++++ b/.github/workflows/build_android.yml
+@@ -1,20 +1,15 @@
+-name: Android (arm64-v8a, API level 33)
++name: Android
+ 
+ on:
+-  push:
+-      branches: 
+-        - "*"
+-      tags:
+-        - "*"
+-    
+-  pull_request:
+-      branches: 
+-        - "*"
++  workflow_dispatch:
+ 
+ jobs:
+   build-shared:
+-    name: Shared Library
++    name: "Shared Library - ${{ matrix.abi }}"
+     runs-on: ubuntu-latest
++    strategy:
++      matrix:
++        abi: [arm64-v8a, armeabi-v7a, x86_64]
+ 
+     steps:
+       - uses: actions/checkout@v4
+@@ -27,7 +22,7 @@ jobs:
+           sudo apt-get install -y ninja-build
+ 
+       - name: Configure Build
+-        run: cmake -G "Ninja Multi-Config" -S "${{ github.workspace }}" -B "${{ github.workspace }}/cmake-build" -DCMAKE_TOOLCHAIN_FILE="${ANDROID_NDK_ROOT}/build/cmake/android.toolchain.cmake" -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/install" -DANDROID_PLATFORM=33 -DANDROID_ABI=arm64-v8a -DCMAKE_VERBOSE_MAKEFILE=YES -DBUILD_SHARED_LIBS=ON -DBUILD_TESTING=NO -DENABLE_SDL_UI=OFF
++        run: cmake -G "Ninja Multi-Config" -S "${{ github.workspace }}" -B "${{ github.workspace }}/cmake-build" -DCMAKE_TOOLCHAIN_FILE="${ANDROID_NDK_ROOT}/build/cmake/android.toolchain.cmake" -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/install" -DANDROID_PLATFORM=33 -DANDROID_ABI=${{ matrix.abi }} -DCMAKE_VERBOSE_MAKEFILE=YES -DBUILD_SHARED_LIBS=ON -DBUILD_TESTING=NO -DENABLE_SDL_UI=OFF
+ 
+       - name: Build Debug
+         run: cmake --build "${{ github.workspace }}/cmake-build" --config "Debug" --parallel
+@@ -43,10 +38,11 @@ jobs:
+       - name: Upload Artifact
+         uses: actions/upload-artifact@v4
+         with:
+-            name: projectm-android-shared-latest
++            name: projectm-android-shared-${{ matrix.abi }}-api33
+             path: install/*
+ 
+   build-static:
++    if: false
+     name: Static Library
+     runs-on: ubuntu-latest
+ 
