@@ -1,0 +1,1 @@
+This branch contains the Maven repository. Visit https://protyposis.github.io/projectm-android-builds/ for the landing page or https://github.com/protyposis/projectm-android-builds/ for the actual README.
