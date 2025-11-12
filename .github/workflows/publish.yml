@@ -19,13 +19,11 @@ on:
   workflow_dispatch:
     inputs:
       projectm_ref:
-        description: 'projectM ref (tag/branch/commit)'
+        description: 'projectM ref (tag/branch/commit, e.g., v4.1.0 or master)'
         required: false
-        default: 'master'
       version:
-        description: 'Version to publish (e.g., 4.1.0)'
+        description: 'Version to publish (e.g., 4.1.0 or master-SNAPSHOT)'
         required: false
-        default: 'SNAPSHOT'
 
   # Scheduled builds
   schedule:
@@ -60,7 +58,7 @@ jobs:
         BUILDS='[]'
 
         # If manual trigger, use provided inputs
-        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.projectm_ref }}" ] && [ -n "${{ github.event.inputs.version }}" ]; then
           REF="${{ github.event.inputs.projectm_ref }}"
           VERSION="${{ github.event.inputs.version }}"
           BUILDS=$(echo "$BUILDS" | jq -c '. + [{"ref": "'$REF'", "version": "'$VERSION'"}]')
