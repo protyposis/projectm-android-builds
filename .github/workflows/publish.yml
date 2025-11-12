@@ -157,7 +157,7 @@ jobs:
       run: |
         # Create unique branch name for this matrix job
         SAFE_REF=$(echo "${{ matrix.ref }}" | sed 's/[^a-zA-Z0-9._-]/-/g')
-        BUILD_BRANCH="build-projectm-${{ github.run_id }}-${SAFE_REF}"
+        BUILD_BRANCH="projectmbuild/${{ github.run_id }}-${SAFE_REF}"
         echo "build_branch=$BUILD_BRANCH" >> $GITHUB_OUTPUT
 
         # Configure git
@@ -192,7 +192,7 @@ jobs:
         # Commit and push to new branch in our repository
         git checkout -b "$BUILD_BRANCH"
         git add -A
-        git commit -m "Temporary build branch for projectM ${{ matrix.ref }}"
+        git commit -m "Temporary build branch ${{ matrix.ref }}"
 
         # Push to our repository using PAT
         git push https://x-access-token:${PAT_TOKEN}@github.com/${{ github.repository }}.git "$BUILD_BRANCH"
@@ -216,7 +216,7 @@ jobs:
         github-token: ${{ secrets.PAT_WORKFLOW }}
         script: |
           const safeRef = '${{ matrix.ref }}'.replace(/[^a-zA-Z0-9._-]/g, '-');
-          const BUILD_BRANCH = `build-projectm-${{ github.run_id }}-${safeRef}`;
+          const BUILD_BRANCH = `projectmbuild/${{ github.run_id }}-${safeRef}`;
 
           // Trigger the workflow
           await github.rest.actions.createWorkflowDispatch({
@@ -421,7 +421,7 @@ jobs:
       uses: actions/github-script@v7
       with:
         script: |
-          const branchPrefix = 'build-projectm-${{ github.run_id }}-';
+          const branchPrefix = 'projectmbuild/${{ github.run_id }}-';
 
           try {
             // List all branches
