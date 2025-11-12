@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "net.protyposis.android.projectm"
+    namespace = "net.protyposis.projectm-unofficial"
     compileSdk {
         version = release(34)
     }
