@@ -110,12 +110,16 @@ jobs:
           echo "No new releases or snapshot changes found"
         fi
 
+        echo "Detected builds: $BUILDS"
+
         # Limit to one build per run (see Maven serialization note at top). Multiple scheduled runs
         # per day ensure every pending release/snapshot eventually gets processed.
         if [ "$(echo "$BUILDS" | jq 'length')" -gt 0 ]; then
           FIRST=$(echo "$BUILDS" | jq -c '.[0]')
           BUILDS="[$FIRST]"
         fi
+
+        echo "Selected builds: $BUILDS"
 
         echo "matrix={\"include\":$BUILDS}" >> $GITHUB_OUTPUT
 
