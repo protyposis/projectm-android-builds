@@ -63,15 +63,14 @@ jobs:
         VERSION=${LATEST_RELEASE#v}
 
         if [ "$LATEST_RELEASE" != "null" ] && [ -n "$VERSION" ]; then
-          # Check if we've already published this version to gh-pages
-          PUBLISHED=$(curl -s -o /dev/null -w "%{http_code}" \
-            "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/net/protyposis/projectm-unofficial/projectm-android/${VERSION}/")
+          METADATA_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/net/protyposis/projectm-unofficial/projectm-android/maven-metadata.xml"
+          METADATA_CONTENT=$(curl -sf "$METADATA_URL" || true)
 
-          if [ "$PUBLISHED" != "200" ]; then
+          if echo "$METADATA_CONTENT" | grep -q "<version>$VERSION</version>"; then
+            echo "Release $VERSION already published"
+          else
             echo "New projectM release found: $LATEST_RELEASE"
             BUILDS=$(echo "$BUILDS" | jq -c '. + [{"ref": "'$LATEST_RELEASE'", "version": "'$VERSION'"}]')
-          else
-            echo "Release $VERSION already published"
           fi
         fi
 
