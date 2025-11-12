@@ -273,13 +273,6 @@ jobs:
     - name: Checkout publisher repo
       uses: actions/checkout@v4
 
-    - name: Checkout gh-pages branch
-      uses: actions/checkout@v4
-      with:
-        ref: gh-pages
-        path: gh-pages-site
-        fetch-depth: 0
-
     - name: Download arm64-v8a artifacts
       uses: actions/download-artifact@v4
       with:
@@ -321,6 +314,13 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-gradle-
 
+    - name: Checkout gh-pages branch
+      uses: actions/checkout@v4
+      with:
+        ref: gh-pages
+        path: gh-pages-site
+        fetch-depth: 0
+
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
@@ -332,13 +332,6 @@ jobs:
           -PPROJECTM_VERSION=${{ matrix.version }} \
           -PghPagesRepoDir="$GITHUB_WORKSPACE/gh-pages-site"
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: projectm-android-${{ matrix.version }}
-        path: |
-          projectm-android/build/outputs/aar/*.aar
-
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
       with:
@@ -349,6 +342,13 @@ jobs:
         user_name: 'github-actions[bot]'
         user_email: 'github-actions[bot]@users.noreply.github.com'
         commit_message: 'Publish projectM Android ${{ matrix.version }}'
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: projectm-android-${{ matrix.version }}
+        path: |
+          projectm-android/build/outputs/aar/*.aar
 
   # Deploy landing page after all artifacts are published
   deploy-index:
