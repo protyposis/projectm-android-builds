@@ -199,7 +199,8 @@ jobs:
 
   # Trigger upstream build on temporary branch
   build-projectm:
-    needs: setup-build-branch
+    needs: [check-versions, setup-build-branch]
+    if: fromJson(needs.check-versions.outputs.matrix).include[0] != null
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJson(needs.check-versions.outputs.matrix) }}
@@ -284,7 +285,8 @@ jobs:
           }
 
   publish:
-    needs: build-projectm
+    needs: [check-versions, build-projectm]
+    if: fromJson(needs.check-versions.outputs.matrix).include[0] != null
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJson(needs.check-versions.outputs.matrix) }}
