@@ -373,7 +373,7 @@ jobs:
   # Deploy landing page after all artifacts are published
   deploy-index:
     needs: publish
-    if: fromJson(needs.check-versions.outputs.matrix).include[0] != null
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
 
     steps:
