@@ -1,5 +1,14 @@
 name: Package and publish projectM for Android
 
+# NOTE: GitHub Pages hosts our Maven repo. Gradle rewrites maven-metadata.xml using the existing
+# file contents, so concurrent publishes clobber earlier versions. Every serialization tweak below
+# references this constraint.
+
+# Prevent concurrent runs (see note above).
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
 permissions:
   contents: write
   pages: write
@@ -20,7 +29,11 @@ on:
 
   # Scheduled builds
   schedule:
-    - cron: '17 3 * * *'  # Daily - check for new releases and build snapshots
+    # Daily snapshots/releases (multiple slots since each run publishes at most one version;
+    # see Maven-serialization note above).
+    - cron: '17 3 * * *'
+    - cron: '17 4 * * *'
+    - cron: '17 5 * * *'
 
   # Push to main for testing
   push:
@@ -97,6 +110,13 @@ jobs:
 
         if [ "$(echo "$BUILDS" | jq 'length')" -eq 0 ]; then
           echo "No new releases or snapshot changes found"
+        fi
+
+        # Limit to one build per run (see Maven serialization note at top). Multiple scheduled runs
+        # per day ensure every pending release/snapshot eventually gets processed.
+        if [ "$(echo "$BUILDS" | jq 'length')" -gt 0 ]; then
+          FIRST=$(echo "$BUILDS" | jq -c '.[0]')
+          BUILDS="[$FIRST]"
         fi
 
         echo "matrix={\"include\":$BUILDS}" >> $GITHUB_OUTPUT
