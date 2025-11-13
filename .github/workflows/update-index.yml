@@ -1,0 +1,55 @@
+name: Update GitHub Pages Index
+
+# This workflow updates the landing page (index.html) on GitHub Pages.
+# It can be triggered by changes to the template, called by other workflows, or run manually.
+
+on:
+  # Can be called by other workflows
+  workflow_call:
+
+  # Can be triggered manually
+  workflow_dispatch:
+
+  # Triggered when the template is updated
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/gh-pages-index.html'
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  deploy-index:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout publisher repo
+      uses: actions/checkout@v4
+
+    - name: Prepare index.html
+      run: |
+        mkdir -p gh-pages-site
+
+        # Get repository name from GITHUB_REPOSITORY
+        REPO_NAME="${GITHUB_REPOSITORY#*/}"
+        REPO_OWNER="${GITHUB_REPOSITORY%/*}"
+
+        # Copy and customize index.html
+        cp .github/gh-pages-index.html gh-pages-site/index.html
+
+        # Replace placeholders
+        sed -i "s/REPO_OWNER/$REPO_OWNER/g" gh-pages-site/index.html
+        sed -i "s/REPO_NAME/$REPO_NAME/g" gh-pages-site/index.html
+
+    - name: Deploy index.html to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./gh-pages-site
+        publish_branch: gh-pages
+        keep_files: true
+        user_name: 'github-actions[bot]'
+        user_email: 'github-actions[bot]@users.noreply.github.com'
+        commit_message: 'Update GitHub Pages landing page'

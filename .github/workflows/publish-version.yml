@@ -1,0 +1,322 @@
+name: Publish projectM Version
+
+# This workflow builds and publishes a single version of projectM for Android.
+# It can be called by the orchestrator workflow or triggered manually.
+#
+# The workflow creates a temporary branch with patched build files, triggers the build,
+# and publishes the artifacts to the Maven repository on GitHub Pages.
+
+# Prevent concurrent runs
+concurrency:
+  group: publish-version
+  cancel-in-progress: false
+
+on:
+  # Can be called by other workflows
+  workflow_call:
+    inputs:
+      projectm_ref:
+        description: 'projectM ref (tag/branch/commit)'
+        required: true
+        type: string
+      version:
+        description: 'Version to publish'
+        required: true
+        type: string
+    secrets:
+      PAT_WORKFLOW:
+        required: true
+
+  # Can be triggered manually
+  workflow_dispatch:
+    inputs:
+      projectm_ref:
+        description: 'projectM ref (tag/branch/commit, e.g., v4.1.0 or master)'
+        required: true
+      version:
+        description: 'Version to publish (e.g., 4.1.0 or master-SNAPSHOT)'
+        required: true
+
+permissions:
+  contents: write
+  pages: write
+  actions: read
+
+jobs:
+  # Create temporary build branch with patched upstream workflow
+  setup-build-branch:
+    runs-on: ubuntu-latest
+    outputs:
+      build_branch: ${{ steps.setup.outputs.build_branch }}
+
+    steps:
+    - name: Checkout publisher repo
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.PAT_WORKFLOW }}
+        fetch-depth: 0
+
+    - name: Checkout projectM
+      uses: actions/checkout@v4
+      with:
+        repository: projectM-visualizer/projectm
+        ref: ${{ inputs.projectm_ref }}
+        submodules: recursive
+        path: projectm-source
+        fetch-depth: 0
+
+    - name: Setup and push build branch
+      id: setup
+      env:
+        PAT_TOKEN: ${{ secrets.PAT_WORKFLOW }}
+      run: |
+        # Create unique branch name for this job
+        SAFE_REF=$(echo "${{ inputs.projectm_ref }}" | sed 's/[^a-zA-Z0-9._-]/-/g')
+        BUILD_BRANCH="projectmbuild/${{ github.run_id }}-${{ github.run_number }}-${SAFE_REF}"
+        echo "build_branch=$BUILD_BRANCH" >> $GITHUB_OUTPUT
+
+        # Configure git
+        cd projectm-source
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+        # Clear GitHub Actions default auth so PAT is used instead
+        git config --unset-all http.https://github.com/.extraheader || true
+
+        # Determine which patch to use based on ref name
+        REF="${{ inputs.projectm_ref }}"
+
+        if [[ "$REF" == "master" ]]; then
+          PATCH="master.patch"
+        elif [[ "$REF" == "v4.1.x" ]] || [[ "$REF" == v4.1.* ]]; then
+          PATCH="v4.1.x.patch"
+        else
+          # Default to v4.1.x patch for unknown refs
+          echo "Warning: Unknown ref '$REF', defaulting to v4.1.x.patch"
+          PATCH="v4.1.x.patch"
+        fi
+
+        echo "Applying patch: $PATCH for ref: $REF"
+        git apply --ignore-whitespace --whitespace=fix "../.github/patches/$PATCH"
+
+        # Remove all non-Android workflow files to prevent them from triggering
+        cd .github/workflows
+        find . -type f ! -name 'build_android.yml' -delete
+        cd ../..
+
+        # Commit and push to new branch in our repository
+        git checkout -b "$BUILD_BRANCH"
+        git add -A
+        git commit -m "Temporary build branch for ${{ inputs.projectm_ref }} -> ${{ inputs.version }}"
+
+        # Push to our repository using PAT
+        git push https://x-access-token:${PAT_TOKEN}@github.com/${{ github.repository }}.git "$BUILD_BRANCH"
+
+  # Trigger upstream build on temporary branch
+  build-projectm:
+    needs: setup-build-branch
+    runs-on: ubuntu-latest
+    outputs:
+      workflow_run_id: ${{ steps.trigger.outputs.run_id }}
+
+    steps:
+    - name: Trigger Android workflow on build branch
+      id: trigger
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ secrets.PAT_WORKFLOW }}
+        script: |
+          const BUILD_BRANCH = '${{ needs.setup-build-branch.outputs.build_branch }}';
+
+          // Trigger the workflow
+          await github.rest.actions.createWorkflowDispatch({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            workflow_id: 'build_android.yml',
+            ref: BUILD_BRANCH
+          });
+
+          console.log('Triggered Android workflow on branch:', BUILD_BRANCH);
+
+          // Poll for the workflow run to be created
+          let runId = null;
+          const startTime = Date.now();
+          const maxWaitingTimeSecs = 60;
+
+          while ((Date.now() - startTime) < maxWaitingTimeSecs * 1000 && !runId) {
+            await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds (be nice to API)
+
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'build_android.yml',
+              branch: BUILD_BRANCH,
+              per_page: 1
+            });
+
+            const elapsedSecs = Math.round((Date.now() - startTime) / 1000);
+            if (runs.data.workflow_runs.length > 0) {
+              runId = runs.data.workflow_runs[0].id;
+              console.log(`Found Android workflow run after ${elapsedSecs} seconds:`, runId);
+              core.setOutput('run_id', runId);
+            } else {
+              console.log(`Still waiting for workflow run... (${elapsedSecs}s)`);
+            }
+          }
+
+          if (!runId) {
+            core.setFailed(`Could not find triggered workflow run after ${maxWaitingTimeSecs} seconds`);
+          }
+
+    - name: Wait for workflow completion
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const RUN_ID = '${{ steps.trigger.outputs.run_id }}';
+
+          console.log('Waiting for workflow run:', RUN_ID);
+
+          let status = 'in_progress';
+          let conclusion = null;
+          const startTime = Date.now();
+          const maxWaitingTimeHours = 2;
+
+          while ((Date.now() - startTime) < maxWaitingTimeHours * 3600 * 1000 && (status === 'queued' || status === 'in_progress')) {
+            await new Promise(resolve => setTimeout(resolve, 20000)); // Wait 20 seconds
+
+            const run = await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: RUN_ID
+            });
+
+            status = run.data.status;
+            conclusion = run.data.conclusion;
+
+            const elapsedMinutes = Math.floor((Date.now() - startTime) / 60000);
+            console.log(`[${elapsedMinutes}m] Status: ${status}, Conclusion: ${conclusion || 'pending'}`);
+          }
+
+          if (!conclusion) {
+            core.setFailed(`Workflow timed out after ${maxWaitingTimeHours} hours`);
+          } else if (conclusion !== 'success') {
+            core.setFailed(`Workflow failed with conclusion: ${conclusion}`);
+          } else {
+            console.log('Workflow completed successfully!');
+          }
+
+  # Package and publish to Maven repository
+  publish:
+    needs: build-projectm
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout publisher repo
+      uses: actions/checkout@v4
+
+    - name: Download arm64-v8a artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: projectm-android-shared-arm64-v8a-api33
+        path: artifacts/arm64-v8a
+        run-id: ${{ needs.build-projectm.outputs.workflow_run_id }}
+        github-token: ${{ secrets.PAT_WORKFLOW }}
+
+    - name: Download armeabi-v7a artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: projectm-android-shared-armeabi-v7a-api33
+        path: artifacts/armeabi-v7a
+        run-id: ${{ needs.build-projectm.outputs.workflow_run_id }}
+        github-token: ${{ secrets.PAT_WORKFLOW }}
+
+    - name: Download x86_64 artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: projectm-android-shared-x86_64-api33
+        path: artifacts/x86_64
+        run-id: ${{ needs.build-projectm.outputs.workflow_run_id }}
+        github-token: ${{ secrets.PAT_WORKFLOW }}
+
+    - name: Organize libraries for AAR packaging
+      run: |
+        bash .github/scripts/prefab-prepare.sh
+
+        echo "Module layout:"
+        find projectm-android
+
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Checkout gh-pages branch
+      uses: actions/checkout@v4
+      with:
+        ref: gh-pages
+        path: gh-pages-site
+        fetch-depth: 0
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Package and Publish to Local Maven Repository
+      run: |
+        # Package AAR and publish to local repository for GitHub Pages
+        ./gradlew \
+          :projectm-android:publishProjectMAndroidPublicationToGitHubPagesRepository \
+          -PPROJECTM_VERSION=${{ inputs.version }} \
+          -PghPagesRepoDir="$GITHUB_WORKSPACE/gh-pages-site"
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./gh-pages-site
+        publish_branch: gh-pages
+        keep_files: true
+        user_name: 'github-actions[bot]'
+        user_email: 'github-actions[bot]@users.noreply.github.com'
+        commit_message: 'Publish projectM Android ${{ inputs.version }}'
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: projectm-android-${{ inputs.version }}
+        path: |
+          projectm-android/build/outputs/aar/*.aar
+
+  # Cleanup: Delete temporary build branch
+  cleanup-branch:
+    needs: [setup-build-branch, publish]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Delete build branch
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const BUILD_BRANCH = '${{ needs.setup-build-branch.outputs.build_branch }}';
+
+          if (!BUILD_BRANCH) {
+            console.log('No build branch to delete');
+            return;
+          }
+
+          try {
+            await github.rest.git.deleteRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'heads/' + BUILD_BRANCH
+            });
+            console.log('Deleted temporary build branch:', BUILD_BRANCH);
+          } catch (error) {
+            // Branch might already be deleted or not exist - that's fine
+            console.log('Could not delete branch:', BUILD_BRANCH, error.message);
+          }

@@ -1,85 +1,56 @@
-name: Package and publish projectM for Android
+name: Publish Orchestrator
 
-# WORKFLOW ARCHITECTURE:
-# This workflow builds projectM for Android by creating temporary branches with patched upstream
-# workflow files. A Personal Access Token (PAT_WORKFLOW) is REQUIRED because:
-#
-# 1. We create a temporary branch with a modified/new build_android.yml workflow file
-# 2. GitHub's default GITHUB_TOKEN cannot trigger workflows on branches where the workflow
-#    file was just created or modified (security feature to prevent infinite loops)
-# 3. We need to trigger the build_android.yml workflow on this new branch via workflow_dispatch
-# 4. We need to download artifacts from the separately triggered workflow run
-#
-# The PAT_WORKFLOW secret must have read and write permissions for:
-# - Actions (to trigger workflows and download artifacts)
-# - Contents (to push branches with workflow files)
-# - Workflows (to trigger workflow_dispatch on new workflow files)
+# ORCHESTRATOR WORKFLOW
+# This workflow orchestrates the building and publishing of projectM for Android.
+# It checks for new releases and snapshot updates, then triggers individual version
+# builds using the publish-version workflow with max-parallel=1 to avoid Maven
+# metadata update race conditions on GitHub Pages.
+# 
+# GitHub Pages hosts the Maven repo, and Gradle rewrites maven-metadata.xml using
+# the existing file contents, so concurrent publishes clobber earlier versions.
 
-# NOTE: GitHub Pages hosts our Maven repo. Gradle rewrites maven-metadata.xml using the existing
-# file contents, so concurrent publishes clobber earlier versions. Every serialization tweak below
-# references this constraint.
-
-# Prevent concurrent runs (see note above).
+# Prevent concurrent orchestrator runs
 concurrency:
-  group: publish
+  group: publish-orchestrator
   cancel-in-progress: false
 
-permissions:
-  contents: write
-  pages: write
-  actions: read
-
 on:
-  # Manual trigger with version input
+  # Manual trigger
   workflow_dispatch:
-    inputs:
-      projectm_ref:
-        description: 'projectM ref (tag/branch/commit, e.g., v4.1.0 or master)'
-        required: false
-      version:
-        description: 'Version to publish (e.g., 4.1.0 or master-SNAPSHOT)'
-        required: false
 
-  # Scheduled builds
+  # Scheduled daily check
   schedule:
-    # Daily snapshots/releases (multiple slots since each run publishes at most one version;
-    # see Maven-serialization note above).
     - cron: '17 3 * * *'
-    - cron: '17 4 * * *'
-    - cron: '17 5 * * *'
 
   # Push to main for testing
   push:
     branches: [ main ]
     paths:
-      - '.github/workflows/**'
+      - '.github/workflows/publish.yml'
+      - '.github/workflows/publish-version.yml'
       - '.github/patches/**'
-      - 'projectm-android/**'
-      - '*.gradle'
+
+permissions:
+  contents: write
+  pages: write
+  actions: write
 
 jobs:
+  # Check for new projectM releases and snapshot updates
   check-versions:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.check.outputs.matrix }}
+      has_builds: ${{ steps.check.outputs.has_builds }}
 
     steps:
     - name: Checkout publisher repo
       uses: actions/checkout@v4
 
-    - name: Check for new projectM releases or snapshots
+    - name: Check for new projectM releases and snapshots
       id: check
       run: |
         BUILDS='[]'
-
-        # If manual trigger, use provided inputs
-        if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.projectm_ref }}" ] && [ -n "${{ github.event.inputs.version }}" ]; then
-          REF="${{ github.event.inputs.projectm_ref }}"
-          VERSION="${{ github.event.inputs.version }}"
-          BUILDS=$(echo "$BUILDS" | jq -c '. + [{"ref": "'$REF'", "version": "'$VERSION'"}]')
-          echo "matrix={\"include\":$BUILDS}" >> $GITHUB_OUTPUT
-          exit 0
-        fi
 
         # Check for both new releases and snapshot updates
         echo "Checking for new releases and snapshot updates"
@@ -96,7 +67,7 @@ jobs:
             echo "Release $VERSION already published"
           else
             echo "New projectM release found: $LATEST_RELEASE"
-            BUILDS=$(echo "$BUILDS" | jq -c '. + [{"ref": "'$LATEST_RELEASE'", "version": "'$VERSION'"}]')
+            BUILDS=$(echo "$BUILDS" | jq -c '. + [{"projectm_ref": "'$LATEST_RELEASE'", "version": "'$VERSION'"}]')
           fi
         fi
 
@@ -105,369 +76,67 @@ jobs:
 
         # Check master branch
         MASTER_COMMIT_TIME=$(curl -s https://api.github.com/repos/projectM-visualizer/projectm/commits/master | jq -r '.commit.committer.date')
-        MASTER_COMMIT_EPOCH=$(date -d "$MASTER_COMMIT_TIME" +%s)
+        if [ "$MASTER_COMMIT_TIME" != "null" ]; then
+          MASTER_COMMIT_EPOCH=$(date -d "$MASTER_COMMIT_TIME" +%s)
 
-        if [ "$MASTER_COMMIT_EPOCH" -gt "$YESTERDAY_EPOCH" ]; then
-          echo "Master branch has new commits, adding to build matrix"
-          BUILDS=$(echo "$BUILDS" | jq -c '. + [{"ref": "master", "version": "master-SNAPSHOT"}]')
+          if [ "$MASTER_COMMIT_EPOCH" -gt "$YESTERDAY_EPOCH" ]; then
+            echo "Master branch has new commits, adding to build matrix"
+            BUILDS=$(echo "$BUILDS" | jq -c '. + [{"projectm_ref": "master", "version": "master-SNAPSHOT"}]')
+          fi
         fi
 
         # Check v4.1.x branch
         V41X_COMMIT_TIME=$(curl -s https://api.github.com/repos/projectM-visualizer/projectm/commits/v4.1.x | jq -r '.commit.committer.date')
-        V41X_COMMIT_EPOCH=$(date -d "$V41X_COMMIT_TIME" +%s)
+        if [ "$V41X_COMMIT_TIME" != "null" ]; then
+          V41X_COMMIT_EPOCH=$(date -d "$V41X_COMMIT_TIME" +%s)
 
-        if [ "$V41X_COMMIT_EPOCH" -gt "$YESTERDAY_EPOCH" ]; then
-          echo "v4.1.x branch has new commits, adding to build matrix"
-          BUILDS=$(echo "$BUILDS" | jq -c '. + [{"ref": "v4.1.x", "version": "4.1.x-SNAPSHOT"}]')
+          if [ "$V41X_COMMIT_EPOCH" -gt "$YESTERDAY_EPOCH" ]; then
+            echo "v4.1.x branch has new commits, adding to build matrix"
+            BUILDS=$(echo "$BUILDS" | jq -c '. + [{"projectm_ref": "v4.1.x", "version": "4.1.x-SNAPSHOT"}]')
+          fi
         fi
 
-        if [ "$(echo "$BUILDS" | jq 'length')" -eq 0 ]; then
+        BUILD_COUNT=$(echo "$BUILDS" | jq 'length')
+        if [ "$BUILD_COUNT" -eq 0 ]; then
           echo "No new releases or snapshot changes found"
-        fi
-
-        echo "Detected builds: $BUILDS"
-
-        # Limit to one build per run (see Maven serialization note at top). Multiple scheduled runs
-        # per day ensure every pending release/snapshot eventually gets processed.
-        if [ "$(echo "$BUILDS" | jq 'length')" -gt 0 ]; then
-          FIRST=$(echo "$BUILDS" | jq -c '.[0]')
-          BUILDS="[$FIRST]"
-        fi
-
-        echo "Selected builds: $BUILDS"
-
-        echo "matrix={\"include\":$BUILDS}" >> $GITHUB_OUTPUT
-
-  # Create temporary build branch with patched upstream workflow
-  setup-build-branch:
-    needs: check-versions
-    if: fromJson(needs.check-versions.outputs.matrix).include[0] != null
-    runs-on: ubuntu-latest
-    strategy:
-      matrix: ${{ fromJson(needs.check-versions.outputs.matrix) }}
-      fail-fast: false
-    outputs:
-      build_branch: ${{ steps.setup.outputs.build_branch }}
-
-    steps:
-    - name: Checkout publisher repo
-      uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.PAT_WORKFLOW }}
-        fetch-depth: 0
-
-    - name: Checkout projectM
-      uses: actions/checkout@v4
-      with:
-        repository: projectM-visualizer/projectm
-        ref: ${{ matrix.ref }}
-        submodules: recursive
-        path: projectm-source
-        fetch-depth: 0
-
-    - name: Setup and push build branch
-      id: setup
-      env:
-        PAT_TOKEN: ${{ secrets.PAT_WORKFLOW }}
-      run: |
-        # Create unique branch name for this matrix job
-        SAFE_REF=$(echo "${{ matrix.ref }}" | sed 's/[^a-zA-Z0-9._-]/-/g')
-        BUILD_BRANCH="projectmbuild/${{ github.run_id }}-${SAFE_REF}"
-        echo "build_branch=$BUILD_BRANCH" >> $GITHUB_OUTPUT
-
-        # Configure git
-        cd projectm-source
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-
-        # Clear GitHub Actions default auth so PAT is used instead
-        git config --unset-all http.https://github.com/.extraheader || true
-
-        # Determine which patch to use based on ref name
-        REF="${{ matrix.ref }}"
-
-        if [[ "$REF" == "master" ]]; then
-          PATCH="master.patch"
-        elif [[ "$REF" == "v4.1.x" ]] || [[ "$REF" == v4.1.* ]]; then
-          PATCH="v4.1.x.patch"
+          echo "has_builds=false" >> $GITHUB_OUTPUT
+          echo "matrix={\"include\":[]}" >> $GITHUB_OUTPUT
         else
-          # Default to v4.1.x patch for unknown refs (fail-fast will catch issues)
-          echo "Warning: Unknown ref '$REF', defaulting to v4.1.x.patch"
-          PATCH="v4.1.x.patch"
+          echo "Found $BUILD_COUNT build(s) to process"
+          echo "Builds: $BUILDS"
+          echo "has_builds=true" >> $GITHUB_OUTPUT
+          echo "matrix={\"include\":$BUILDS}" >> $GITHUB_OUTPUT
         fi
 
-        echo "Applying patch: $PATCH for ref: $REF"
-        git apply --ignore-whitespace --whitespace=fix "../.github/patches/$PATCH"
-
-        # Remove all non-Android workflow files to prevent them from triggering
-        cd .github/workflows
-        find . -type f ! -name 'build_android.yml' -delete
-        cd ../..
-
-        # Commit and push to new branch in our repository
-        git checkout -b "$BUILD_BRANCH"
-        git add -A
-        git commit -m "Temporary build branch ${{ matrix.ref }}"
-
-        # Push to our repository using PAT
-        git push https://x-access-token:${PAT_TOKEN}@github.com/${{ github.repository }}.git "$BUILD_BRANCH"
-
-  # Trigger upstream build on temporary branch
-  build-projectm:
-    needs: [check-versions, setup-build-branch]
-    if: fromJson(needs.check-versions.outputs.matrix).include[0] != null
-    runs-on: ubuntu-latest
+  # Build and publish each version sequentially
+  publish-versions:
+    needs: check-versions
+    if: needs.check-versions.outputs.has_builds == 'true'
     strategy:
       matrix: ${{ fromJson(needs.check-versions.outputs.matrix) }}
-      fail-fast: false
-    outputs:
-      workflow_run_id: ${{ steps.trigger.outputs.run_id }}
+      max-parallel: 1  # Prevent Maven metadata race conditions
+      fail-fast: false  # Continue with other builds if one fails
+    uses: ./.github/workflows/publish-version.yml
+    with:
+      projectm_ref: ${{ matrix.projectm_ref }}
+      version: ${{ matrix.version }}
+    secrets:
+      PAT_WORKFLOW: ${{ secrets.PAT_WORKFLOW }}
 
-    steps:
-    - name: Trigger Android workflow on build branch
-      id: trigger
-      uses: actions/github-script@v7
-      with:
-        github-token: ${{ secrets.PAT_WORKFLOW }}
-        script: |
-          const safeRef = '${{ matrix.ref }}'.replace(/[^a-zA-Z0-9._-]/g, '-');
-          const BUILD_BRANCH = `projectmbuild/${{ github.run_id }}-${safeRef}`;
-
-          // Trigger the workflow
-          await github.rest.actions.createWorkflowDispatch({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            workflow_id: 'build_android.yml',
-            ref: BUILD_BRANCH
-          });
-
-          console.log('Triggered Android workflow on branch:', BUILD_BRANCH);
-
-          // Wait for the run to be created
-          await new Promise(resolve => setTimeout(resolve, 5000));
-
-          // Find the workflow run
-          const runs = await github.rest.actions.listWorkflowRuns({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            workflow_id: 'build_android.yml',
-            branch: BUILD_BRANCH,
-            per_page: 1
-          });
-
-          if (runs.data.workflow_runs.length > 0) {
-            const runId = runs.data.workflow_runs[0].id;
-            console.log('Found Android workflow run:', runId);
-            core.setOutput('run_id', runId);
-          } else {
-            core.setFailed('Could not find triggered workflow run');
-          }
-
-    - name: Wait for workflow completion
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const RUN_ID = '${{ steps.trigger.outputs.run_id }}';
-
-          console.log('Waiting for workflow run:', RUN_ID);
-
-          let status = 'in_progress';
-          let conclusion = null;
-          let attempts = 0;
-          const maxAttempts = 120; // 2 hours max
-
-          while (attempts < maxAttempts && (status === 'queued' || status === 'in_progress')) {
-            await new Promise(resolve => setTimeout(resolve, 60000)); // Wait 1 minute
-
-            const run = await github.rest.actions.getWorkflowRun({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: RUN_ID
-            });
-
-            status = run.data.status;
-            conclusion = run.data.conclusion;
-            attempts++;
-
-            console.log(`Attempt ${attempts}: status=${status}, conclusion=${conclusion}`);
-          }
-
-          if (conclusion !== 'success') {
-            core.setFailed(`Workflow failed with conclusion: ${conclusion}`);
-          } else {
-            console.log('Workflow completed successfully!');
-          }
-
-  publish:
-    needs: [check-versions, build-projectm]
-    if: fromJson(needs.check-versions.outputs.matrix).include[0] != null
-    runs-on: ubuntu-latest
-    strategy:
-      matrix: ${{ fromJson(needs.check-versions.outputs.matrix) }}
-      fail-fast: false
-      max-parallel: 1 # Serialize Github Pages (Maven repo) updates
-
-    steps:
-    - name: Checkout publisher repo
-      uses: actions/checkout@v4
-
-    - name: Download arm64-v8a artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: projectm-android-shared-arm64-v8a-api33
-        path: artifacts/arm64-v8a
-        run-id: ${{ needs.build-projectm.outputs.workflow_run_id }}
-        github-token: ${{ secrets.PAT_WORKFLOW }}
-
-    - name: Download armeabi-v7a artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: projectm-android-shared-armeabi-v7a-api33
-        path: artifacts/armeabi-v7a
-        run-id: ${{ needs.build-projectm.outputs.workflow_run_id }}
-        github-token: ${{ secrets.PAT_WORKFLOW }}
-
-    - name: Download x86_64 artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: projectm-android-shared-x86_64-api33
-        path: artifacts/x86_64
-        run-id: ${{ needs.build-projectm.outputs.workflow_run_id }}
-        github-token: ${{ secrets.PAT_WORKFLOW }}
-
-    - name: Organize libraries for AAR packaging
-      run: |
-        bash .github/scripts/prefab-prepare.sh
-
-        echo "module layout:"
-        find projectm-android
-
-    - name: Cache Gradle packages
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-
-
-    - name: Checkout gh-pages branch
-      uses: actions/checkout@v4
-      with:
-        ref: gh-pages
-        path: gh-pages-site
-        fetch-depth: 0
-
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-
-    - name: Package and Publish to Local Maven Repository
-      run: |
-        # Package AAR and publish to local repository for GitHub Pages
-        ./gradlew \
-          :projectm-android:publishProjectMAndroidPublicationToGitHubPagesRepository \
-          -PPROJECTM_VERSION=${{ matrix.version }} \
-          -PghPagesRepoDir="$GITHUB_WORKSPACE/gh-pages-site"
-
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./gh-pages-site
-        publish_branch: gh-pages
-        keep_files: true
-        user_name: 'github-actions[bot]'
-        user_email: 'github-actions[bot]@users.noreply.github.com'
-        commit_message: 'Publish projectM Android ${{ matrix.version }}'
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: projectm-android-${{ matrix.version }}
-        path: |
-          projectm-android/build/outputs/aar/*.aar
-
-  # Deploy landing page after all artifacts are published
-  deploy-index:
-    needs: publish
-    if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout publisher repo
-      uses: actions/checkout@v4
-
-    - name: Prepare index.html
-      run: |
-        mkdir -p gh-pages-site
-
-        # Get repository name from GITHUB_REPOSITORY
-        REPO_NAME="${GITHUB_REPOSITORY#*/}"
-        REPO_OWNER="${GITHUB_REPOSITORY%/*}"
-
-        # Copy and customize index.html
-        cp .github/gh-pages-index.html gh-pages-site/index.html
-
-        # Replace placeholders
-        sed -i "s/REPO_OWNER/$REPO_OWNER/g" gh-pages-site/index.html
-        sed -i "s/REPO_NAME/$REPO_NAME/g" gh-pages-site/index.html
-
-    - name: Deploy index.html to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./gh-pages-site
-        publish_branch: gh-pages
-        keep_files: true
-        user_name: 'github-actions[bot]'
-        user_email: 'github-actions[bot]@users.noreply.github.com'
-        commit_message: 'Update GitHub Pages landing page'
-
-  # Cleanup: Delete temporary build branches
-  cleanup:
-    needs: publish
+  # Summary job for status reporting
+  summary:
+    needs: [check-versions, publish-versions]
     if: always()
     runs-on: ubuntu-latest
-
     steps:
-    - name: Delete build branches
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const branchPrefix = 'projectmbuild/${{ github.run_id }}-';
-
-          try {
-            // List all branches
-            const { data: refs } = await github.rest.git.listMatchingRefs({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: 'heads/'
-            });
-
-            // Filter branches that match our prefix
-            const branchesToDelete = refs.filter(ref =>
-              ref.ref.includes(branchPrefix)
-            );
-
-            // Delete each matching branch
-            for (const branch of branchesToDelete) {
-              const refName = branch.ref.replace('refs/', '');
-              try {
-                await github.rest.git.deleteRef({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  ref: refName
-                });
-                console.log('Deleted temporary build branch:', refName);
-              } catch (error) {
-                console.log('Failed to delete branch:', refName, error.message);
-              }
-            }
-
-            if (branchesToDelete.length === 0) {
-              console.log('No temporary build branches found to delete');
-            }
-          } catch (error) {
-            console.log('Error during cleanup:', error.message);
-          }
+    - name: Report build summary
+      run: |
+        if [ "${{ needs.check-versions.outputs.has_builds }}" == "false" ]; then
+          echo "No new versions to build."
+        elif [ "${{ needs.publish-versions.result }}" == "success" ]; then
+          echo "All versions published successfully!"
+        elif [ "${{ needs.publish-versions.result }}" == "failure" ]; then
+          echo "Some version builds failed. Check the logs for details."
+        else
+          echo "Build process was cancelled or skipped."
+        fi
