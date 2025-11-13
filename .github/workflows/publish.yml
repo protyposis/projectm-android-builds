@@ -92,7 +92,7 @@ jobs:
 
           if [ "$V41X_COMMIT_EPOCH" -gt "$YESTERDAY_EPOCH" ]; then
             echo "v4.1.x branch has new commits, adding to build matrix"
-            BUILDS=$(echo "$BUILDS" | jq -c '. + [{"projectm_ref": "v4.1.x", "version": "4.1.x-SNAPSHOT"}]')
+            BUILDS=$(echo "$BUILDS" | jq -c '. + [{"projectm_ref": "v4.1.x", "version": "v4.1.x-SNAPSHOT"}]')
           fi
         fi
 
