@@ -44,3 +44,4 @@ projectm/build/
 projectm/cmake-build*/
 
 local-maven-build-repo/
+artifacts/
