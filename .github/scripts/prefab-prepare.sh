@@ -50,9 +50,11 @@ EOF
 
 write_module_json() {
   local module_dir="$1"
+  local library_name="$2"
   mkdir -p "$module_dir"
-  cat > "$module_dir/module.json" <<'EOF'
+  cat > "$module_dir/module.json" <<EOF
 {
+  "library_name": "$(printf %s "$library_name" | json_escape)",
   "export_libraries": [],
   "android": {}
 }
@@ -96,22 +98,24 @@ copy_libs_for_abi() {
   [[ -d "$src_lib_dir" ]] || { echo "Warn: skip ABI '$abi' (no '$src_lib_dir')"; return 0; }
 
   # Release
-  local rel_src="$src_lib_dir/lib${module}.so"
+  local rel_lib="lib${module}.so"
+  local rel_src="$src_lib_dir/$rel_lib"
   local rel_dst_dir="$DST_ROOT/main/prefab/modules/$module/libs/android.$abi"
   mkdir -p "$rel_dst_dir"
   if [[ -f "$rel_src" ]]; then
-    cp -f "$rel_src" "$rel_dst_dir/lib${module}.so"
+    cp -f "$rel_src" "$rel_dst_dir/$rel_lib"
     write_abi_json "$rel_dst_dir" "$abi"
   else
     echo "Warn: release lib missing for $module ($abi): $rel_src"
   fi
 
-  # Debug (rename *d.so -> .so)
-  local dbg_src="$src_lib_dir/lib${module}d.so"
+  # Debug libraries keep their *d.so suffix
+  local dbg_lib="lib${module}d.so"
+  local dbg_src="$src_lib_dir/$dbg_lib"
   local dbg_dst_dir="$DST_ROOT/debug/prefab/modules/$module/libs/android.$abi"
   mkdir -p "$dbg_dst_dir"
   if [[ -f "$dbg_src" ]]; then
-    cp -f "$dbg_src" "$dbg_dst_dir/lib${module}.so"
+    cp -f "$dbg_src" "$dbg_dst_dir/$dbg_lib"
     write_abi_json "$dbg_dst_dir" "$abi"
   else
     echo "Warn: debug lib missing for $module ($abi): $dbg_src"
@@ -134,8 +138,8 @@ write_prefab_json "$DST_ROOT/debug/prefab"
 
 # module.json per module (main + debug)
 for m in "${MODULES[@]}"; do
-  write_module_json "$DST_ROOT/main/prefab/modules/$m"
-  write_module_json "$DST_ROOT/debug/prefab/modules/$m"
+  write_module_json "$DST_ROOT/main/prefab/modules/$m" "lib${m}"
+  write_module_json "$DST_ROOT/debug/prefab/modules/$m" "lib${m}d"
 done
 
 # Shared headers → both modules/variants
