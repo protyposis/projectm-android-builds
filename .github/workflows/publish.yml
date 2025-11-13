@@ -266,7 +266,6 @@ jobs:
     - name: Wait for workflow completion
       uses: actions/github-script@v7
       with:
-        github-token: ${{ secrets.PAT_WORKFLOW }}
         script: |
           const RUN_ID = '${{ steps.trigger.outputs.run_id }}';
 
