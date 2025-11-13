@@ -74,27 +74,24 @@ jobs:
         # Check snapshot branches for changes in last 24 hours
         YESTERDAY_EPOCH=$(date -d "24 hours ago" +%s)
 
-        # Check master branch
-        MASTER_COMMIT_TIME=$(curl -s https://api.github.com/repos/projectM-visualizer/projectm/commits/master | jq -r '.commit.committer.date')
-        if [ "$MASTER_COMMIT_TIME" != "null" ]; then
-          MASTER_COMMIT_EPOCH=$(date -d "$MASTER_COMMIT_TIME" +%s)
+        # Define snapshot branches to check
+        SNAPSHOT_BRANCHES=(
+          "master"
+          "v4.1.x"
+        )
 
-          if [ "$MASTER_COMMIT_EPOCH" -gt "$YESTERDAY_EPOCH" ]; then
-            echo "Master branch has new commits, adding to build matrix"
-            BUILDS=$(echo "$BUILDS" | jq -c '. + [{"projectm_ref": "master", "version": "master-SNAPSHOT"}]')
+        # Check each snapshot branch
+        for BRANCH in "${SNAPSHOT_BRANCHES[@]}"; do
+          COMMIT_TIME=$(curl -s https://api.github.com/repos/projectM-visualizer/projectm/commits/$BRANCH | jq -r '.commit.committer.date')
+          if [ "$COMMIT_TIME" != "null" ]; then
+            COMMIT_EPOCH=$(date -d "$COMMIT_TIME" +%s)
+
+            if [ "$COMMIT_EPOCH" -gt "$YESTERDAY_EPOCH" ]; then
+              echo "$BRANCH branch has new commits, adding to build matrix"
+              BUILDS=$(echo "$BUILDS" | jq -c '. + [{"projectm_ref": "'$BRANCH'", "version": "'$BRANCH'-SNAPSHOT"}]')
+            fi
           fi
-        fi
-
-        # Check v4.1.x branch
-        V41X_COMMIT_TIME=$(curl -s https://api.github.com/repos/projectM-visualizer/projectm/commits/v4.1.x | jq -r '.commit.committer.date')
-        if [ "$V41X_COMMIT_TIME" != "null" ]; then
-          V41X_COMMIT_EPOCH=$(date -d "$V41X_COMMIT_TIME" +%s)
-
-          if [ "$V41X_COMMIT_EPOCH" -gt "$YESTERDAY_EPOCH" ]; then
-            echo "v4.1.x branch has new commits, adding to build matrix"
-            BUILDS=$(echo "$BUILDS" | jq -c '. + [{"projectm_ref": "v4.1.x", "version": "v4.1.x-SNAPSHOT"}]')
-          fi
-        fi
+        done
 
         BUILD_COUNT=$(echo "$BUILDS" | jq 'length')
         if [ "$BUILD_COUNT" -eq 0 ]; then
