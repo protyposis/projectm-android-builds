@@ -1,5 +1,20 @@
 name: Package and publish projectM for Android
 
+# WORKFLOW ARCHITECTURE:
+# This workflow builds projectM for Android by creating temporary branches with patched upstream
+# workflow files. A Personal Access Token (PAT_WORKFLOW) is REQUIRED because:
+#
+# 1. We create a temporary branch with a modified/new build_android.yml workflow file
+# 2. GitHub's default GITHUB_TOKEN cannot trigger workflows on branches where the workflow
+#    file was just created or modified (security feature to prevent infinite loops)
+# 3. We need to trigger the build_android.yml workflow on this new branch via workflow_dispatch
+# 4. We need to download artifacts from the separately triggered workflow run
+#
+# The PAT_WORKFLOW secret must have read and write permissions for:
+# - Actions (to trigger workflows and download artifacts)
+# - Contents (to push branches with workflow files)
+# - Workflows (to trigger workflow_dispatch on new workflow files)
+
 # NOTE: GitHub Pages hosts our Maven repo. Gradle rewrites maven-metadata.xml using the existing
 # file contents, so concurrent publishes clobber earlier versions. Every serialization tweak below
 # references this constraint.
