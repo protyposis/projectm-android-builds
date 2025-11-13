@@ -39,9 +39,15 @@ androidComponents {
             val variantPrefabDir = project.layout.projectDirectory.dir("src/$variantName/prefab")
             val mainPrefabDir = project.layout.projectDirectory.dir("src/main/prefab")
             val chosenPrefabDir = if (variantPrefabDir.asFile.exists()) variantPrefabDir else mainPrefabDir
+            val prefabOutputDir = layout.buildDirectory.dir("intermediates/prefab-pack/$variantName/prefab")
 
             from(chosenPrefabDir)
-            into(layout.buildDirectory.dir("intermediates/prefab-pack/$variantName/prefab"))
+            into(prefabOutputDir)
+
+            doFirst {
+                // Ensure stale prefab files never leak into the packaged AAR.
+                prefabOutputDir.get().asFile.deleteRecursively()
+            }
         }
 
         tasks.withType(Zip::class.java).configureEach {
