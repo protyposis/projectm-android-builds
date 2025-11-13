@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata modelVersion="1.1.0">
+  <groupId>net.protyposis.projectm-unofficial</groupId>
+  <artifactId>projectm-android</artifactId>
+  <versioning>
+    <lastUpdated>20251113110645</lastUpdated>
+    <snapshot>
+      <timestamp>20251113.110645</timestamp>
+      <buildNumber>1</buildNumber>
+    </snapshot>
+    <snapshotVersions>
+      <snapshotVersion>
+        <extension>module</extension>
+        <value>v4.1.x-20251113.110645-1</value>
+        <updated>20251113110645</updated>
+      </snapshotVersion>
+      <snapshotVersion>
+        <classifier>debug</classifier>
+        <extension>aar</extension>
+        <value>v4.1.x-20251113.110645-1</value>
+        <updated>20251113110645</updated>
+      </snapshotVersion>
+      <snapshotVersion>
+        <extension>pom</extension>
+        <value>v4.1.x-20251113.110645-1</value>
+        <updated>20251113110645</updated>
+      </snapshotVersion>
+      <snapshotVersion>
+        <classifier>release</classifier>
+        <extension>aar</extension>
+        <value>v4.1.x-20251113.110645-1</value>
+        <updated>20251113110645</updated>
+      </snapshotVersion>
+    </snapshotVersions>
+  </versioning>
+  <version>v4.1.x-SNAPSHOT</version>
+</metadata>
