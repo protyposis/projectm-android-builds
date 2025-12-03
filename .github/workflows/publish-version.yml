@@ -92,8 +92,8 @@ jobs:
           PATCHES=("v4.1.x.patch")
         else
           # Default to v4.1.x patch for unknown refs
-          echo "Warning: Unknown ref '$REF', defaulting to v4.1.x.patch"
-          PATCHES=("v4.1.x.patch")
+          echo "Warning: Unknown ref '$REF', defaulting to master patches"
+          PATCHES=("master.patch" "master-16k.patch")
         fi
 
         for PATCH in "${PATCHES[@]}"; do
