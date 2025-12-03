@@ -1,0 +1,12 @@
+diff --git forkSrcPrefix/.github/workflows/build_android.yml forkDstPrefix/.github/workflows/build_android.yml
+index cf828730e3949d82ba706850e45197cc86274fe3..ed8f3bcd984f8049f2524973254a0c28f8487599 100644
+--- forkSrcPrefix/.github/workflows/build_android.yml
++++ forkDstPrefix/.github/workflows/build_android.yml
+@@ -47,6 +47,7 @@ jobs:
+             -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/install" \
+             -DANDROID_PLATFORM="${{ matrix.platform-version }}" \
+             -DANDROID_ABI="${{ matrix.abi }}" \
++            -DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON \
+             -DCMAKE_VERBOSE_MAKEFILE=YES \
+             -DBUILD_SHARED_LIBS="${shared_libs}" \
+             -DBUILD_TESTING=NO \

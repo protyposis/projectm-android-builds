@@ -87,17 +87,19 @@ jobs:
         REF="${{ inputs.projectm_ref }}"
 
         if [[ "$REF" == "master" ]]; then
-          PATCH="master.patch"
+          PATCHES=("master.patch" "master-16k.patch")
         elif [[ "$REF" == "v4.1.x" ]] || [[ "$REF" == v4.1.* ]]; then
-          PATCH="v4.1.x.patch"
+          PATCHES=("v4.1.x.patch")
         else
           # Default to v4.1.x patch for unknown refs
           echo "Warning: Unknown ref '$REF', defaulting to v4.1.x.patch"
-          PATCH="v4.1.x.patch"
+          PATCHES=("v4.1.x.patch")
         fi
 
-        echo "Applying patch: $PATCH for ref: $REF"
-        git apply --ignore-whitespace --whitespace=fix "../.github/patches/$PATCH"
+        for PATCH in "${PATCHES[@]}"; do
+          echo "Applying patch: $PATCH for ref: $REF"
+          git apply --ignore-whitespace --whitespace=fix "../.github/patches/$PATCH"
+        done
 
         # Remove all non-Android workflow files to prevent them from triggering
         cd .github/workflows
