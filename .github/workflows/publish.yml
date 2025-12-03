@@ -17,6 +17,12 @@ concurrency:
 on:
   # Manual trigger
   workflow_dispatch:
+    inputs:
+      force_dry_run:
+        description: 'Force-build all supported branches without publishing'
+        type: boolean
+        required: false
+        default: false
 
   # Scheduled daily check
   schedule:
@@ -42,6 +48,7 @@ jobs:
     outputs:
       matrix: ${{ steps.check.outputs.matrix }}
       has_builds: ${{ steps.check.outputs.has_builds }}
+      dry_run: ${{ steps.check.outputs.dry_run }}
 
     steps:
     - name: Checkout publisher repo
@@ -54,6 +61,24 @@ jobs:
 
         # Check for both new releases and snapshot updates
         echo "Checking for new releases and snapshot updates"
+
+        FORCE_DRY_RUN='${{ github.event.inputs.force_dry_run }}'
+        # Treat push events as forced dry run for CI integration testing
+        if [ "${{ github.event_name }}" = "push" ]; then
+          FORCE_DRY_RUN='true'
+        fi
+        if [ "$FORCE_DRY_RUN" = "true" ]; then
+          echo "Force dry run enabled: building all supported branches"
+          BUILDS=$(echo "$BUILDS" | jq -c '. + [
+            {"projectm_ref":"master","version":"master-SNAPSHOT"},
+            {"projectm_ref":"v4.1.x","version":"v4.1.x-SNAPSHOT"}
+          ]')
+          echo "dry_run=true" >> $GITHUB_OUTPUT
+          echo "has_builds=true" >> $GITHUB_OUTPUT
+          echo "matrix={\"include\":$BUILDS}" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        echo "dry_run=false" >> $GITHUB_OUTPUT
 
         # Check latest projectM release
         LATEST_RELEASE=$(curl -s https://api.github.com/repos/projectM-visualizer/projectm/releases/latest | jq -r .tag_name)
@@ -117,6 +142,7 @@ jobs:
     with:
       projectm_ref: ${{ matrix.projectm_ref }}
       version: ${{ matrix.version }}
+      dry_run: ${{ needs.check-versions.outputs.dry_run == 'true' }}
     secrets:
       PAT_WORKFLOW: ${{ secrets.PAT_WORKFLOW }}
 
@@ -131,7 +157,11 @@ jobs:
         if [ "${{ needs.check-versions.outputs.has_builds }}" == "false" ]; then
           echo "No new versions to build."
         elif [ "${{ needs.publish-versions.result }}" == "success" ]; then
-          echo "All versions published successfully!"
+          if [ "${{ needs.check-versions.outputs.dry_run }}" == "true" ]; then
+            echo "Force dry run completed successfully (no publishing performed)."
+          else
+            echo "All versions published successfully!"
+          fi
         elif [ "${{ needs.publish-versions.result }}" == "failure" ]; then
           echo "Some version builds failed. Check the logs for details."
         else

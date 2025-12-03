@@ -23,6 +23,11 @@ on:
         description: 'Version to publish'
         required: true
         type: string
+      dry_run:
+        description: 'Build and package without publishing to GitHub Pages/Maven'
+        required: false
+        type: boolean
+        default: false
     secrets:
       PAT_WORKFLOW:
         required: true
@@ -36,6 +41,11 @@ on:
       version:
         description: 'Version to publish (e.g., 4.1.0 or master-SNAPSHOT)'
         required: true
+      dry_run:
+        description: 'Build and package without publishing to GitHub Pages/Maven'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -276,6 +286,7 @@ jobs:
           -PghPagesRepoDir="$GITHUB_WORKSPACE/gh-pages-site"
 
     - name: Deploy to GitHub Pages
+      if: ${{ !inputs.dry_run }}
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
