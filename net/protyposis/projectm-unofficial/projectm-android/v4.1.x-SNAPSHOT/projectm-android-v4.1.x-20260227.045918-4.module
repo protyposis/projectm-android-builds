@@ -1,0 +1,102 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "net.protyposis.projectm-unofficial",
+    "module": "projectm-android",
+    "version": "v4.1.x-SNAPSHOT",
+    "attributes": {
+      "org.gradle.status": "integration"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14.3"
+    }
+  },
+  "variants": [
+    {
+      "name": "debugVariantDefaultApiPublication",
+      "attributes": {
+        "com.android.build.api.attributes.BuildTypeAttr": "debug",
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "projectm-android-v4.1.x-SNAPSHOT-debug.aar",
+          "url": "projectm-android-v4.1.x-SNAPSHOT-debug.aar",
+          "size": 13628178,
+          "sha512": "c826637c127670a6c7e44cc3ef0de7547058d42887c93a688f583e701c1be23a54c84127c1e82abd7ae6fd29bb08e9a9fe71aab43f831053ebd7c158424a75e2",
+          "sha256": "353f2d51ef111a8fcb5503f15ed7325153d9887a1e526f277a2d3276b95b6e00",
+          "sha1": "a3de18ee2e706e1d4862c75365e115cd81217fa8",
+          "md5": "e6599703d1581f52eb0c7e8bf1249173"
+        }
+      ]
+    },
+    {
+      "name": "debugVariantDefaultRuntimePublication",
+      "attributes": {
+        "com.android.build.api.attributes.BuildTypeAttr": "debug",
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "projectm-android-v4.1.x-SNAPSHOT-debug.aar",
+          "url": "projectm-android-v4.1.x-SNAPSHOT-debug.aar",
+          "size": 13628178,
+          "sha512": "c826637c127670a6c7e44cc3ef0de7547058d42887c93a688f583e701c1be23a54c84127c1e82abd7ae6fd29bb08e9a9fe71aab43f831053ebd7c158424a75e2",
+          "sha256": "353f2d51ef111a8fcb5503f15ed7325153d9887a1e526f277a2d3276b95b6e00",
+          "sha1": "a3de18ee2e706e1d4862c75365e115cd81217fa8",
+          "md5": "e6599703d1581f52eb0c7e8bf1249173"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantDefaultApiPublication",
+      "attributes": {
+        "com.android.build.api.attributes.BuildTypeAttr": "release",
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "projectm-android-v4.1.x-SNAPSHOT-release.aar",
+          "url": "projectm-android-v4.1.x-SNAPSHOT-release.aar",
+          "size": 10164442,
+          "sha512": "3a9dc007e6b5516ce45f60bafdc86c8b1b15cc72875fa0d40e2607680d990f85ae424cb2354c4a1916b062efdb9152eb2ec98859dff5d04b1edb5627168f6de0",
+          "sha256": "f5968cd36bea207b732996920fa7f569940556ab432a101227f24168146c6671",
+          "sha1": "d23fa001ff0362e3297aca5664553710dd3e515a",
+          "md5": "357158e4fda8284fef62076095a442c7"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantDefaultRuntimePublication",
+      "attributes": {
+        "com.android.build.api.attributes.BuildTypeAttr": "release",
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "projectm-android-v4.1.x-SNAPSHOT-release.aar",
+          "url": "projectm-android-v4.1.x-SNAPSHOT-release.aar",
+          "size": 10164442,
+          "sha512": "3a9dc007e6b5516ce45f60bafdc86c8b1b15cc72875fa0d40e2607680d990f85ae424cb2354c4a1916b062efdb9152eb2ec98859dff5d04b1edb5627168f6de0",
+          "sha256": "f5968cd36bea207b732996920fa7f569940556ab432a101227f24168146c6671",
+          "sha1": "d23fa001ff0362e3297aca5664553710dd3e515a",
+          "md5": "357158e4fda8284fef62076095a442c7"
+        }
+      ]
+    }
+  ]
+}
