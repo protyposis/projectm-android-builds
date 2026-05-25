@@ -1,7 +1,7 @@
-diff --git forkSrcPrefix/.github/workflows/build_android.yml forkDstPrefix/.github/workflows/build_android.yml
-index cf828730e3949d82ba706850e45197cc86274fe3..eb554b162b1c557907e3412af9688b8dbeaaa53d 100644
---- forkSrcPrefix/.github/workflows/build_android.yml
-+++ forkDstPrefix/.github/workflows/build_android.yml
+diff --git a/.github/workflows/build_android.yml b/.github/workflows/build_android.yml
+index cf82873..fadf14d 100644
+--- a/.github/workflows/build_android.yml
++++ b/.github/workflows/build_android.yml
 @@ -11,6 +11,8 @@ on:
        branches:
          - "*"
@@ -20,3 +20,25 @@ index cf828730e3949d82ba706850e45197cc86274fe3..eb554b162b1c557907e3412af9688b8d
          abi: ['arm64-v8a', 'armeabi-v7a', 'x86_64']
          platform-version: ['33']
          runs-on: ['ubuntu-24.04']
+@@ -40,6 +42,10 @@ jobs:
+           else
+             shared_libs=OFF
+           fi
++          extra_flags=""
++          if [ "${{ matrix.abi }}" == "armeabi-v7a" ]; then
++            extra_flags="-femulated-tls"
++          fi
+           cmake -G "Ninja Multi-Config" \
+             -S "${{ github.workspace }}" \
+             -B "${{ github.workspace }}/cmake-build" \
+@@ -50,7 +56,9 @@ jobs:
+             -DCMAKE_VERBOSE_MAKEFILE=YES \
+             -DBUILD_SHARED_LIBS="${shared_libs}" \
+             -DBUILD_TESTING=NO \
+-            -DENABLE_SDL_UI=OFF
++            -DENABLE_SDL_UI=OFF \
++            -DCMAKE_C_FLAGS="${extra_flags}" \
++            -DCMAKE_CXX_FLAGS="${extra_flags}"
+ 
+       - name: Build Debug
+         run: cmake --build "${{ github.workspace }}/cmake-build" --config "Debug" --parallel
