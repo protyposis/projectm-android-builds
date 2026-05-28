@@ -93,6 +93,9 @@ jobs:
         # Clear GitHub Actions default auth so PAT is used instead
         git config --unset-all http.https://github.com/.extraheader || true
 
+        # Capture the upstream commit hash before any patches are applied
+        UPSTREAM_HASH=$(git rev-parse HEAD)
+
         # Determine which patch to use based on ref name
         REF="${{ inputs.projectm_ref }}"
 
@@ -115,6 +118,8 @@ jobs:
         cd .github/workflows
         find . -type f ! -name 'build_android.yml' -delete
         cd ../..
+
+        bash "../.github/scripts/patch-vcs-version.sh" "$UPSTREAM_HASH"
 
         # Commit and push to new branch in our repository
         git checkout -b "$BUILD_BRANCH"
