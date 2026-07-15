@@ -3,33 +3,33 @@
   <groupId>net.protyposis.projectm-unofficial</groupId>
   <artifactId>projectm-android</artifactId>
   <versioning>
-    <lastUpdated>20260425042051</lastUpdated>
+    <lastUpdated>20260715042528</lastUpdated>
     <snapshot>
-      <timestamp>20260425.042051</timestamp>
-      <buildNumber>6</buildNumber>
+      <timestamp>20260715.042528</timestamp>
+      <buildNumber>7</buildNumber>
     </snapshot>
     <snapshotVersions>
       <snapshotVersion>
         <classifier>debug</classifier>
         <extension>aar</extension>
-        <value>v4.1.x-20260425.042051-6</value>
-        <updated>20260425042051</updated>
+        <value>v4.1.x-20260715.042528-7</value>
+        <updated>20260715042528</updated>
+      </snapshotVersion>
+      <snapshotVersion>
+        <extension>pom</extension>
+        <value>v4.1.x-20260715.042528-7</value>
+        <updated>20260715042528</updated>
       </snapshotVersion>
       <snapshotVersion>
         <classifier>release</classifier>
         <extension>aar</extension>
-        <value>v4.1.x-20260425.042051-6</value>
-        <updated>20260425042051</updated>
-      </snapshotVersion>
-      <snapshotVersion>
-        <extension>pom</extension>
-        <value>v4.1.x-20260425.042051-6</value>
-        <updated>20260425042051</updated>
+        <value>v4.1.x-20260715.042528-7</value>
+        <updated>20260715042528</updated>
       </snapshotVersion>
       <snapshotVersion>
         <extension>module</extension>
-        <value>v4.1.x-20260425.042051-6</value>
-        <updated>20260425042051</updated>
+        <value>v4.1.x-20260715.042528-7</value>
+        <updated>20260715042528</updated>
       </snapshotVersion>
     </snapshotVersions>
   </versioning>
