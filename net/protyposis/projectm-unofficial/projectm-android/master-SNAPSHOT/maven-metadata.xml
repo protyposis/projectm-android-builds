@@ -3,33 +3,33 @@
   <groupId>net.protyposis.projectm-unofficial</groupId>
   <artifactId>projectm-android</artifactId>
   <versioning>
-    <lastUpdated>20260825033549</lastUpdated>
+    <lastUpdated>20260829033005</lastUpdated>
     <snapshot>
-      <timestamp>20260825.033549</timestamp>
-      <buildNumber>21</buildNumber>
+      <timestamp>20260829.033005</timestamp>
+      <buildNumber>22</buildNumber>
     </snapshot>
     <snapshotVersions>
       <snapshotVersion>
-        <classifier>debug</classifier>
-        <extension>aar</extension>
-        <value>master-20260825.033549-21</value>
-        <updated>20260825033549</updated>
-      </snapshotVersion>
-      <snapshotVersion>
         <classifier>release</classifier>
         <extension>aar</extension>
-        <value>master-20260825.033549-21</value>
-        <updated>20260825033549</updated>
+        <value>master-20260829.033005-22</value>
+        <updated>20260829033005</updated>
       </snapshotVersion>
       <snapshotVersion>
-        <extension>pom</extension>
-        <value>master-20260825.033549-21</value>
-        <updated>20260825033549</updated>
+        <classifier>debug</classifier>
+        <extension>aar</extension>
+        <value>master-20260829.033005-22</value>
+        <updated>20260829033005</updated>
       </snapshotVersion>
       <snapshotVersion>
         <extension>module</extension>
-        <value>master-20260825.033549-21</value>
-        <updated>20260825033549</updated>
+        <value>master-20260829.033005-22</value>
+        <updated>20260829033005</updated>
+      </snapshotVersion>
+      <snapshotVersion>
+        <extension>pom</extension>
+        <value>master-20260829.033005-22</value>
+        <updated>20260829033005</updated>
       </snapshotVersion>
     </snapshotVersions>
   </versioning>
