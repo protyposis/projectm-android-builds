@@ -33,7 +33,7 @@ index cf82873..14a20aa 100644
              shared_libs=OFF
            fi
 +          extra_flags=""
-+          if [ "${{ matrix.abi }}" == "armeabi-v7a" ]; then
++          if [ "${{ matrix.abi }}" == "armeabi-v7a" ] || [ "${{ matrix.abi }}" == "arm64-v8a" ]; then
 +            extra_flags="-femulated-tls"
 +          fi
            cmake -G "Ninja Multi-Config" \
