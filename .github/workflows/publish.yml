@@ -36,6 +36,14 @@ on:
       - '.github/workflows/publish-version.yml'
       - '.github/patches/**'
 
+  # Test patched builds for same-repository PRs; dispatch requires PAT_WORKFLOW.
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/publish.yml'
+      - '.github/workflows/publish-version.yml'
+      - '.github/patches/**'
+
 permissions:
   contents: write
   pages: write
@@ -63,8 +71,9 @@ jobs:
         echo "Checking for new releases and snapshot updates"
 
         FORCE_DRY_RUN='${{ github.event.inputs.force_dry_run }}'
-        # Treat push events as forced dry run for CI integration testing
-        if [ "${{ github.event_name }}" = "push" ]; then
+        # Treat push and pull request events as forced dry runs for CI testing
+        if [ "${{ github.event_name }}" = "push" ] || \
+           [ "${{ github.event_name }}" = "pull_request" ]; then
           FORCE_DRY_RUN='true'
         fi
         if [ "$FORCE_DRY_RUN" = "true" ]; then
