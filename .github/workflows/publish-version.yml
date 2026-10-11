@@ -70,13 +70,13 @@ jobs:
 
     steps:
     - name: Checkout publisher repo
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         token: ${{ secrets.PAT_WORKFLOW }}
         fetch-depth: 0
 
     - name: Checkout projectM
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         repository: ${{ inputs.projectm_repository }}
         ref: ${{ inputs.projectm_ref }}
@@ -238,7 +238,7 @@ jobs:
 
     steps:
     - name: Checkout publisher repo
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Download arm64-v8a artifacts
       uses: actions/download-artifact@v4
@@ -282,7 +282,7 @@ jobs:
           ${{ runner.os }}-gradle-
 
     - name: Checkout gh-pages branch
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         ref: gh-pages
         path: gh-pages-site
