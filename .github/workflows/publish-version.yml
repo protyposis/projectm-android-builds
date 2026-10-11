@@ -232,7 +232,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Download arm64-v8a artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: projectm-android-shared-arm64-v8a-api33
         path: artifacts/arm64-v8a
@@ -240,7 +240,7 @@ jobs:
         github-token: ${{ secrets.PAT_WORKFLOW }}
 
     - name: Download armeabi-v7a artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: projectm-android-shared-armeabi-v7a-api33
         path: artifacts/armeabi-v7a
@@ -248,7 +248,7 @@ jobs:
         github-token: ${{ secrets.PAT_WORKFLOW }}
 
     - name: Download x86_64 artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: projectm-android-shared-x86_64-api33
         path: artifacts/x86_64
