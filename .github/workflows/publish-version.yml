@@ -139,7 +139,7 @@ jobs:
     steps:
     - name: Trigger Android workflow on build branch
       id: trigger
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         github-token: ${{ secrets.PAT_WORKFLOW }}
         script: |
@@ -186,7 +186,7 @@ jobs:
           }
 
     - name: Wait for workflow completion
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         script: |
           const RUN_ID = '${{ steps.trigger.outputs.run_id }}';
@@ -317,7 +317,7 @@ jobs:
 
     steps:
     - name: Delete build branch
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         script: |
           const BUILD_BRANCH = '${{ needs.setup-build-branch.outputs.build_branch }}';
