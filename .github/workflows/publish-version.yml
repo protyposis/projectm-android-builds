@@ -15,6 +15,11 @@ on:
   # Can be called by other workflows
   workflow_call:
     inputs:
+      projectm_repository:
+        description: 'projectM repository (owner/name)'
+        required: false
+        type: string
+        default: projectM-visualizer/projectm
       projectm_ref:
         description: 'projectM ref (tag/branch/commit)'
         required: true
@@ -35,6 +40,10 @@ on:
   # Can be triggered manually
   workflow_dispatch:
     inputs:
+      projectm_repository:
+        description: 'projectM repository (owner/name, e.g., protyposis/projectm)'
+        required: false
+        default: projectM-visualizer/projectm
       projectm_ref:
         description: 'projectM ref (tag/branch/commit, e.g., v4.1.0 or master)'
         required: true
@@ -69,7 +78,7 @@ jobs:
     - name: Checkout projectM
       uses: actions/checkout@v4
       with:
-        repository: projectM-visualizer/projectm
+        repository: ${{ inputs.projectm_repository }}
         ref: ${{ inputs.projectm_ref }}
         submodules: recursive
         path: projectm-source
@@ -93,8 +102,8 @@ jobs:
         # Clear GitHub Actions default auth so PAT is used instead
         git config --unset-all http.https://github.com/.extraheader || true
 
-        # Capture the upstream commit hash before any patches are applied
-        UPSTREAM_HASH=$(git rev-parse HEAD)
+        # Capture the source commit hash before any patches are applied
+        SOURCE_HASH=$(git rev-parse HEAD)
 
         # Determine which patch to use based on ref name
         REF="${{ inputs.projectm_ref }}"
@@ -119,12 +128,12 @@ jobs:
         find . -type f ! -name 'build_android.yml' -delete
         cd ../..
 
-        bash "../.github/scripts/patch-vcs-version.sh" "$UPSTREAM_HASH"
+        bash "../.github/scripts/patch-vcs-version.sh" "$SOURCE_HASH"
 
         # Commit and push to new branch in our repository
         git checkout -b "$BUILD_BRANCH"
         git add -A
-        git commit -m "Temporary build branch for ${{ inputs.projectm_ref }} -> ${{ inputs.version }}"
+        git commit -m "Temporary build branch for ${{ inputs.projectm_repository }}@${{ inputs.projectm_ref }} -> ${{ inputs.version }}"
 
         # Push to our repository using PAT
         git push https://x-access-token:${PAT_TOKEN}@github.com/${{ github.repository }}.git "$BUILD_BRANCH"
